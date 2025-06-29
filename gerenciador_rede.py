@@ -61,15 +61,31 @@ def exibir_adaptadores(adaptadores):
     print("-" * 40)
     return True
 
-def executar_comando_modificacao(comando, shell=True):
+def executar_comando_modificacao(comando, shell=False):
     """Executa um comando de modificação e imprime o resultado."""
-    print(f"\n> Executando: {comando}")
+    # Ajuste para exibir o comando corretamente se for uma lista
+    comando_str = ' '.join(comando) if isinstance(comando, list) else comando
+    print(f"\n> Executando: {comando_str}")
+    
     try:
-        proc = subprocess.run(comando, check=True, capture_output=True, text=True, shell=shell, encoding='cp850')
+        # Quando shell=False, o 'comando' deve ser uma lista.
+        # Quando shell=True, o 'comando' deve ser uma string.
+        proc = subprocess.run(
+            comando, 
+            check=True, 
+            capture_output=True, 
+            text=True, 
+            shell=shell, 
+            encoding='cp850'
+        )
         print("✅ Comando executado com sucesso!")
         if proc.stdout: print(f"\n--- Saída ---\n{proc.stdout}")
     except subprocess.CalledProcessError as e:
-        print(f"\n--- ❌ ERRO AO EXECUTAR O COMANDO ---\n{e.stderr or e.stdout}")
+        # Tratamento de erro aprimorado para mostrar a saída de erro do PowerShell
+        erro_msg = e.stderr or e.stdout
+        print(f"\n--- ❌ ERRO AO EXECUTAR O COMANDO ---\n{erro_msg}")
+
+
 
 def fixar_ipv4(adaptador):
     """Configura um endereço IPv4 estático na interface selecionada."""
@@ -85,8 +101,22 @@ def adicionar_ip_proxy(adaptador):
     if not ip_proxy:
         print("Nenhum IP inserido. Operação cancelada.")
         return
-    cmd_ps = f'New-NetIPAddress -InterfaceIndex {adaptador["InterfaceIndex"]} -IPAddress {ip_proxy} -PrefixLength 32'
-    executar_comando_modificacao(cmd_ps, shell=False)
+        
+    # O prefixo /32 equivale à máscara 255.255.255.255 (host mask)
+    prefixo = "32"
+    
+    # --- CORREÇÃO APLICADA AQUI ---
+    # Construímos uma lista, onde o primeiro item é o programa (powershell)
+    # e os seguintes são os argumentos.
+    comando_ps = [
+        "powershell",
+        "-Command",
+        f'New-NetIPAddress -InterfaceIndex {adaptador["InterfaceIndex"]} -IPAddress {ip_proxy} -PrefixLength {prefixo}'
+    ]
+    
+    # Chamamos a função com a lista de comando e shell=False.
+    # shell=False é mais seguro e a forma correta de chamar um executável com argumentos.
+    executar_comando_modificacao(comando_ps, shell=False)
 
 # --- Bloco de Funções de Teste (Refatorado para Melhor Apresentação) ---
 
