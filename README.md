@@ -1,16 +1,14 @@
-# 🚀 Gerenciador de Rede Avançado para Windows
+# 🚀 Gerenciador de Rede
 
 Este é um script interativo em Python desenvolvido para simplificar e automatizar tarefas comuns e avançadas de configuração de rede no sistema operacional Windows. Ele oferece uma interface de linha de comando amigável que guia o usuário através da visualização, modificação e teste de adaptadores de rede.
 
 ## ✨ Funcionalidades
 
-* **Listagem Inteligente de Adaptadores:** Exibe apenas os adaptadores de rede que estão ativamente em uso (com um Gateway IPv4 configurado).
 * **Configuração de IP Fixo:** Altera um adaptador de DHCP para um endereço IPv4 estático, definindo IP, máscara de sub-rede, gateway e um DNS primário (Cloudflare `1.1.1.1`) com um único comando.
 * **Adição de IP Adicional (Proxy/Virtual):** Adiciona um segundo endereço IPv4 a um adaptador com uma máscara de sub-rede específica de host (`255.255.255.255` ou `/32`).
 * **Diagnóstico de Conexão Avançado:** Executa testes de `ping` e `nslookup`, apresentando os resultados de forma clara e analisada:
     * **Análise de Ping:** Extrai e exibe estatísticas detalhadas como pacotes enviados/recebidos, perda, e tempos de resposta mínimo, máximo e médio.
     * **Análise de NSLookup:** Resolve um hostname, exibe os IPs, identifica o servidor DNS, o nome canônico (CNAME) e verifica se o IP resolvido pertence à rede da Cloudflare.
-* **Interface Interativa e em Loop:** Permite que o usuário execute múltiplas operações no mesmo adaptador sem precisar reiniciar o script.
 
 ## 📋 Pré-requisitos
 
