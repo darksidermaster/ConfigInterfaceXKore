@@ -5,7 +5,6 @@ import ctypes
 import sys
 import re
 import ipaddress
-
 # --- Bloco de Funções de Verificação e Coleta de Dados ---
 
 def verificar_admin():
@@ -154,25 +153,79 @@ def analisar_e_exibir_ping(ip, output):
     else: print(f"\n⚠️  ATENÇÃO:\n    • Tempo de resposta ({stats['avg']}) ≥ 1ms")
 
 def analisar_e_exibir_nslookup(hostname, output):
-    server = (re.search(r"Servidor:\s*(.*?)\n|Server:\s*(.*?)\n", output) or [None]*3)[1:3]
-    ips = re.findall(r"Address:\s*(\S+)|Endereço:\s*(\S+)", output)
-    resolved_ips = [ip[0] or ip[1] for ip in ips]
-    cname = (re.search(r"Nome:\s*(.*?)\n|Name:\s*(.*?)\n", output) or [None]*3)[1:3]
-    aliases = re.findall(r"Aliases:\s*(\S+)", output, re.MULTILINE)
-    non_auth = re.search(r"Não é resposta autoritativa|Non-authoritative answer", output)
-    print(f"\n📤 Resultado do NSLookup:\n{output}")
-    if non_auth: print(f"⚠️  Avisos/Erros:\n    • {non_auth.group(0)}")
-    print("\n📊 ANÁLISE DO NSLOOKUP:\n" + "-"*30)
-    if server: print(f"🌐 Servidor DNS: {server[0] or server[1]}")
-    display_ips = [ip for ip in resolved_ips if not (server and (ip in (server[0] or server[1])))]
+    """Analisa a saída do comando nslookup e a exibe de forma formatada (versão corrigida e robusta)."""
+    
+    # --- Extração de dados com Regex de forma segura ---
+    server, cname_val, non_auth_msg = None, None, None
+    aliases, resolved_ips = [], []
+
+    # Extrai o servidor DNS
+    server_match = re.search(r"Servidor:\s*(.*?)\n|Server:\s*(.*?)\n", output)
+    if server_match:
+        server = (server_match.group(1) or server_match.group(2) or "").strip()
+
+    # Extrai todos os endereços IP
+    ip_matches = re.findall(r"Address:\s*(\S+)|Endereço:\s*(\S+)", output)
+    if ip_matches:
+        resolved_ips = [match[0] or match[1] for match in ip_matches]
+
+    # Extrai o Nome Canônico (CNAME)
+    cname_match = re.search(r"Nome:\s*(.*?)\n|Name:\s*(.*?)\n", output)
+    if cname_match:
+        cname_val = (cname_match.group(1) or cname_match.group(2) or "").strip()
+
+    # Extrai os Aliases
+    aliases = re.findall(r"Aliases:\s*(.*)", output, re.MULTILINE)
+    # Limpa os aliases caso venham em múltiplas linhas ou com o hostname
+    if aliases:
+        aliases = [a.strip() for a in aliases[0].split() if a.strip() != hostname]
+
+    # Verifica se a resposta não é autoritativa
+    non_auth_match = re.search(r"Não é resposta autoritativa|Non-authoritative answer", output)
+    if non_auth_match:
+        non_auth_msg = non_auth_match.group(0)
+
+    # --- Exibição formatada dos resultados ---
+    print("\n📤 Resultado Bruto do NSLookup:")
+    print(output)
+    
+    if non_auth_msg:
+        print("⚠️  Avisos/Erros:")
+        print(f"    • {non_auth_msg}")
+
+    print("\n📊 ANÁLISE DO NSLOOKUP:")
+    print("------------------------------")
+    
+    if server:
+        print(f"🌐 Servidor DNS: {server}")
+
+    # Filtra o IP do servidor DNS da lista de IPs resolvidos para o host
+    display_ips = [ip for ip in resolved_ips if ip != server]
+
     if display_ips:
-        print("📍 IPs resolvidos:")
+        print("📍 IPs resolvidos para o host:")
         for ip in display_ips:
-            print(f"    • {ip}" + (" (✅ IP na faixa Cloudflare)" if is_cloudflare_ip(ip) else ""))
-    if cname and (cname[0] or cname[1]).strip() != hostname: print(f"🏷️  Nome canônico: {cname[0] or cname[1]}")
-    if aliases: print("🔗 Aliases encontrados:\n" + "\n".join(f"    • {alias}" for alias in aliases))
-    if display_ips: print(f"\n✅ RESOLUÇÃO DNS OK!\n    • Hostname {hostname} resolvido com sucesso.")
-    else: print(f"\n❌ FALHA NA RESOLUÇÃO DNS!\n    • Não foi possível encontrar um endereço IP para o hostname.")
+            print(f"    • {ip}", end="")
+            if is_cloudflare_ip(ip):
+                print(" (✅ IP na faixa Cloudflare)")
+            else:
+                print() # Apenas nova linha
+    
+    if cname_val and cname_val.lower() != hostname.lower():
+        print(f"🏷️  Nome canônico: {cname_val}")
+
+    if aliases:
+        print("🔗 Aliases encontrados:")
+        for alias in aliases:
+            print(f"    • {alias}")
+
+    if display_ips:
+        print("\n✅ RESOLUÇÃO DNS OK!")
+        print(f"    • Hostname {hostname} resolvido com sucesso.")
+        print(f"    • {len(display_ips)} endereço(s) IP relevante(s) encontrado(s).")
+    else:
+        print("\n❌ FALHA NA RESOLUÇÃO DNS!")
+        print("    • Não foi possível encontrar um endereço IP para o hostname solicitado.")
 
 def realizar_testes_conexao():
     print("\n--- 🛠️  Iniciando Testes de Conexão ---")
